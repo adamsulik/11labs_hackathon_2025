@@ -4,20 +4,10 @@ from components.components import display_chat_messages, animated_text
 from dotenv import load_dotenv
 from eleven.speak import Speaker
 import asyncio
-from tools import movie_tools, process_suggested_df
-from network_embedding import MovieMatcher
 
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
 from agents import SimpleAgent, convert_messages_to_dict
-
-movie_matcher = MovieMatcher()
-suggest_movies = lambda query_titles: process_suggested_df(movie_matcher.find_movies(query_titles, threshold=0.9, n_similar=5))
-
-tool_dictionary = {
-    "suggest_movies": suggest_movies 
-}
-
 
 async def main():
     load_dotenv()
