@@ -1,1 +1,6 @@
 /data/
+*.csv
+.env
+__pycache__
+.python-version
+.vscode
