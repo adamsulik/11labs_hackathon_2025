@@ -4,6 +4,16 @@ from components.components import display_chat_messages, animated_text
 from dotenv import load_dotenv
 from eleven.speak import Speaker
 import asyncio
+from tools import movie_tools, process_suggested_df
+from network_embedding import MovieMatcher
+
+movie_matcher = MovieMatcher()
+suggest_movies = lambda query_titles: process_suggested_df(movie_matcher.find_movies(query_titles, threshold=0.9, n_similar=5))
+
+tool_dictionary = {
+    "suggest_movies": suggest_movies 
+}
+
 
 async def main():
     load_dotenv()
@@ -60,8 +70,22 @@ async def main():
         # Asistant response
         assistant_response = client.chat.completions.create(
             messages=st.session_state.messages,
-            model=model, 
+            model=model,
+            tools=movie_tools
         )
+
+        if assistant_response.choices[0].message.tool_calls:
+            for tool_call in assistant_response.choices[0].message.tool_calls:
+                tool_name = tool_call['function']['name']
+                if tool_name == "suggest_movies":
+                    movie_ids, data = tool_dictionary[tool_name] # _ is a placeholder for movie_ids
+                    st.session_state.messages.append({"role": "assistant", "content": data})
+                    assistant_response = client.chat.completions.create(
+                        messages=st.session_state.messages,
+                        model=model
+                    )
+        else:
+            print('dupa')
 
         response_content = assistant_response.choices[0].message.content
         st.session_state.messages.append({"role": "assistant", "content": response_content})
