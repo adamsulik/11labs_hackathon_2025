@@ -2,7 +2,7 @@ from typing import Annotated, List
 from typing_extensions import TypedDict
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
-from langchain_core.messages import HumanMessage, AIMessage, AnyMessage
+from langchain_core.messages import HumanMessage, AIMessage, AnyMessage, SystemMessage
 
 from langchain_groq import ChatGroq
 
@@ -46,7 +46,8 @@ class SimpleAgent:
     
 
 if __name__ == "__main__":
-    agent = SimpleAgent()
+    sys_message = [SystemMessage('You are a helpful assistant, who loves animals. Introduce yourself that way if asked.')]
+    agent = SimpleAgent(message_history=sys_message)
     while(True):
         message = input('Write a message:')
         if message == 'exit':
