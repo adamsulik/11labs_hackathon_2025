@@ -7,19 +7,27 @@ import asyncio
 
 async def main():
     load_dotenv()
-
+    
+    with open("prompts/01-system-prompt.txt", "r") as file:
+        system_prompt = file.read()
+    
     client = OpenAI()
     model = "gpt-4o-mini"
+    
     speaker = Speaker()
-
-    
-    
-    
 
     st.title("Recomatic 🎥")
     speak = st.toggle("Speaker", value=False)
     if "messages" not in st.session_state:
         st.session_state.messages = []
+        
+        st.session_state.messages.append(
+            {
+                "role": 'system',
+                "content": system_prompt
+            }
+        )
+        
         welcome_message = {
             "role": "assistant",
             "content": "Hi, I'm here to help you choose an interesting movie to watch. Let me know what you like, and I'll be happy to pick something for you!",
@@ -37,18 +45,12 @@ async def main():
 
         # Asistant response
         assistant_response = client.chat.completions.create(
-            messages=[
-                {
-                    "role": "user",
-                    "content": question,
-                }
-            ],
+            messages=st.session_state.messages,
             model=model,
             
         )
 
         response_content = assistant_response.choices[0].message.content
-
         st.session_state.messages.append({"role": "assistant", "content": response_content})
 
 
