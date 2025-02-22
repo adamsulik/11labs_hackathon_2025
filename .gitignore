@@ -1,1 +1,2 @@
-data # dont push data
+*.csv
+.env
