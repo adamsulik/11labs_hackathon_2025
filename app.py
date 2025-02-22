@@ -20,6 +20,8 @@ async def main():
     
     with open("prompts/01-system-prompt.txt", "r") as file:
         system_prompt = file.read()
+    with open("prompts/02-system-prompt-ask.txt", "r") as file:
+        system_prompt_ask = file.read()
     
     client = OpenAI()
     model = "gpt-4o-mini"
@@ -27,25 +29,37 @@ async def main():
     speaker = Speaker()
 
     st.title("Recomatic 🎥")
-    speak = st.toggle("Speaker", value=False)
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        speak = st.toggle("Speaker", value=False)
+    with col2:
+        if st.button("Restart"):
+            st.rerun()
+    
+    
+    
     if "messages" not in st.session_state:
         st.session_state.messages = []
         
         st.session_state.messages.append(
             {
                 "role": 'system',
-                "content": system_prompt
+                "content": system_prompt_ask
             }
         )
         
-        welcome_message = {
-            "role": "assistant",
-            "content": "Hi, I'm here to help you choose an interesting movie to watch. Let me know what you like, and I'll be happy to pick something for you!",
-        }
-
-        st.session_state.messages.append(welcome_message)
-
+        welcome_response = client.chat.completions.create(
+            messages=st.session_state.messages,
+            model=model,
+            temperature=1,
+        )
+        
+        welcome_message = welcome_response.choices[0].message.content
+        st.session_state.messages.append({"role": "assistant", "content": welcome_message})
+        
     display_chat_messages(st.session_state.messages)
+
 
     if question := st.chat_input("Ask about some movie ..."):
         # User question
