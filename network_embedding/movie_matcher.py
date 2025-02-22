@@ -40,6 +40,7 @@ class MovieMatcher:
             similar_movies.append({
                 'movie_id': sim_id,
                 'title': movie['title'],
+                'overview': movie['overview'],
                 'release_date': movie['release_date'],
                 'vote_average': movie['vote_average'],
                 'similarity_score': sim_score
