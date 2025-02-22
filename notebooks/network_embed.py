@@ -15,6 +15,7 @@ from sklearn.preprocessing import MultiLabelBinarizer
 from sklearn.metrics.pairwise import cosine_similarity
 import pickle
 import ast  # Add to imports at top
+from datetime import datetime
 
 # %% Imports and setup
 def setup_paths():
@@ -58,6 +59,14 @@ def is_valid_overview(overview):
         return False
     return True
 
+def is_valid_date(date_str):
+    """Check if date is valid and after 2010"""
+    try:
+        date = datetime.strptime(date_str, '%Y-%m-%d')
+        return date.year >= 2010
+    except:
+        return False
+
 def create_movie_cast_dict(credits_df):
     """Create dictionary mapping movie IDs to their cast"""
     movie_cast = {}
@@ -69,16 +78,18 @@ def create_movie_cast_dict(credits_df):
     return movie_cast
 
 def create_movie_info_dict(metadata_df):
-    """Create dictionary with movie metadata, filtering for valid overviews"""
+    """Create dictionary with movie metadata, filtering for valid overviews and recent movies"""
     movie_info = {}
     for _, row in metadata_df.iterrows():
         try:
             movie_id = int(row['id'])
-            if is_valid_overview(row['overview']):
+            if (is_valid_overview(row['overview']) and 
+                is_valid_date(row['release_date'])):
                 movie_info[movie_id] = {
                     'title': row['title'],
                     'overview': row['overview'],
-                    'genres': extract_genres(row['genres'])
+                    'genres': extract_genres(row['genres']),
+                    'release_date': row['release_date']
                 }
         except:
             continue
@@ -247,6 +258,7 @@ def create_movie_embeddings(G, hidden_dim=64, out_dim=32, num_epochs=100):
                      hidden_channels=hidden_dim,
                      out_channels=out_dim)
     
+    # optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
     
     # Training loop
@@ -348,26 +360,31 @@ def track_data_reduction(credits_df, metadata_df):
     print(f"\n2. Invalid IDs in metadata: {invalid_ids}")
     print(f"   Remaining after ID cleanup: {len(metadata_df.dropna(subset=['id']))}")
     
+    # Check release date
+    valid_date = metadata_df['release_date'].apply(is_valid_date)
+    print(f"\n3. Movies before 2010: {(~valid_date).sum()}")
+    print(f"   Movies from 2010 onwards: {valid_date.sum()}")
+    
     # Check cast parsing losses
     valid_cast = credits_df['cast'].apply(lambda x: len(extract_cast(x)) > 0)
-    print(f"\n3. Movies without valid cast data: {(~valid_cast).sum()}")
+    print(f"\n4. Movies without valid cast data: {(~valid_cast).sum()}")
     print(f"   Movies with valid cast: {valid_cast.sum()}")
     
     # Check overview losses
     valid_overview = metadata_df['overview'].apply(is_valid_overview)
-    print(f"\n4. Movies without valid overview: {(~valid_overview).sum()}")
+    print(f"\n5. Movies without valid overview: {(~valid_overview).sum()}")
     print(f"   Movies with valid overview: {valid_overview.sum()}")
     
     # Check genre losses
     valid_genres = metadata_df['genres'].apply(lambda x: len(extract_genres(x)) > 0)
-    print(f"\n5. Movies without valid genres: {(~valid_genres).sum()}")
+    print(f"\n6. Movies without valid genres: {(~valid_genres).sum()}")
     print(f"   Movies with valid genres: {valid_genres.sum()}")
     
     # Intersection losses
     movie_cast = create_movie_cast_dict(credits_df)
     movie_info = create_movie_info_dict(metadata_df)
     common_movies = set(movie_cast.keys()) & set(movie_info.keys())
-    print(f"\n6. Final intersection of valid movies: {len(common_movies)}")
+    print(f"\n7. Final intersection of valid movies (2010+): {len(common_movies)}")
     print(f"   Lost in intersection: {len(movie_cast) - len(common_movies)} from cast dataset")
     print(f"                         {len(movie_info) - len(common_movies)} from info dataset")
 
@@ -396,12 +413,12 @@ def main():
     print_example_connections(G)
     
     # Create and save embeddings
-    movie_embeddings, genre_labels = create_movie_embeddings(G)
+    movie_embeddings, genre_labels = create_movie_embeddings(G, num_epochs=200)
     save_embeddings(movie_embeddings, genre_labels, OUTPUTS_DIR)
     print(f"\nCreated and saved {len(movie_embeddings)} movie embeddings with {len(genre_labels)} genre features")
     
     # Detailed analysis of similar movies to Toy Story
-    target_movie_id = 862
+    target_movie_id = 27205
     if target_movie_id in G.nodes:
         target_movie = G.nodes[target_movie_id]
         print("\n" + "="*80)
