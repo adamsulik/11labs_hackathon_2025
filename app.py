@@ -1,9 +1,10 @@
 import streamlit as st
-from openai import OpenAI
+from posthog.ai.openai import OpenAI
 from components.components import display_chat_messages, animated_text, display_movie_cards
 from dotenv import load_dotenv
 from eleven.speak import Speaker
 import asyncio
+import posthog
 
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
@@ -12,6 +13,20 @@ from agents import EnhancedAgent, convert_messages_to_dict
 from network_embedding import MovieMatcher
 
 
+# Initialize PostHog client
+posthog.project_api_key = 'phc_t5qvrjFAKWrXwjOetxLAtvopHGsK3FEIzZBPvVv254G'
+posthog.host = "https://us.i.posthog.com"
+background_client = OpenAI(
+    posthog_client=posthog,
+)
+background_model = 'gpt-4o-mini'
+background_chat = background_client.chat.completions.create
+
+user_id = 'test_user_1'
+
+posthog_params = {
+    'posthog_distinct_id': user_id
+}
 async def main(movie_matcher: MovieMatcher):
     load_dotenv()
     with open("prompts/02-system-prompt-ask.txt", "r") as file:
@@ -67,6 +82,15 @@ async def main(movie_matcher: MovieMatcher):
         assistant_response = front_agent.graph.invoke({'input_message': question})
         response_content = assistant_response['messages'][-1].content
         st.session_state.messages.append(AIMessage(response_content))
+        
+        background_messages_buffer = convert_messages_to_dict(st.session_state.messages)
+        background_messages_buffer = [m for m in background_messages_buffer if m['role'] != 'system']
+        background_messages_buffer.append({
+            "role": "system",
+            "content": "Your goal is to summarize user experience and his/her profile and interests. You should return only user's sentiment and interests."
+        })
+        background_response = background_client.chat.completions.create(messages=background_messages_buffer, model=background_model)
+        print(background_response.choices[0].message.content)
 
         # Handle response animation
         if speak:

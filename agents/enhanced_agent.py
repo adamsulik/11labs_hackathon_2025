@@ -25,7 +25,7 @@ def process_suggested_df(sugggested_df):
     
     # Update session state only if the movie IDs have changed
     st.session_state.movie_ids = movie_ids
-    st.rerun()    
+    # st.rerun()    
     return titles_with_desc
 
 class SuggestMoviesSchema(BaseModel):
