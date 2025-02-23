@@ -1,4 +1,5 @@
 from typing import Annotated, List
+import streamlit as st
 from typing_extensions import TypedDict
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
@@ -19,9 +20,12 @@ load_dotenv()
 movie_matcher = MovieMatcher()
 
 def process_suggested_df(sugggested_df):
-    movie_ids = sugggested_df['movie_id'].tolist()
+    movie_ids = sugggested_df['imdb_id'].tolist()
     titles_with_desc = sugggested_df[['title', 'overview']].to_markdown(index=False)
-    # return movie_ids, titles_with_desc
+    
+    # Update session state only if the movie IDs have changed
+    st.session_state.movie_ids = movie_ids
+    # st.rerun()    
     return titles_with_desc
 
 class SuggestMoviesSchema(BaseModel):
