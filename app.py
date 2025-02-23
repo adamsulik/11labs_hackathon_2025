@@ -7,9 +7,12 @@ import asyncio
 
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
-from agents import SimpleAgent, convert_messages_to_dict
+# from agents import SimpleAgent, convert_messages_to_dict
+from agents import EnhancedAgent, convert_messages_to_dict
+from network_embedding import MovieMatcher
 
-async def main():
+
+async def main(movie_matcher: MovieMatcher):
     load_dotenv()
     with open("prompts/02-system-prompt-ask.txt", "r") as file:
         system_prompt_ask = file.read()
@@ -27,13 +30,19 @@ async def main():
     
     
     if "messages" not in st.session_state:
+        system_prompt_ask = """
+            You are a smart movie assistant. Ask user for their favorite movies and suggest similar movies using the tools you have.\
+            Movie list is defined as at least one movie title that user provided. If you have at least one user's movie use a tool to find similar movies.\
+        """
         st.session_state.messages = [SystemMessage(system_prompt_ask)]
-        front_agent = SimpleAgent(message_history=st.session_state.messages.copy())
+        # front_agent = SimpleAgent(message_history=st.session_state.messages.copy())
+        front_agent = EnhancedAgent(message_history=st.session_state.messages.copy())
         welcome_message = front_agent.graph.invoke({'input_message': 'Hi!'})
         welcome_message = welcome_message['messages'][-1].content
         st.session_state.messages.append(AIMessage(welcome_message))
     else:
-        front_agent = SimpleAgent(message_history=st.session_state.messages.copy())
+        # front_agent = SimpleAgent(message_history=st.session_state.messages.copy())
+        front_agent = EnhancedAgent(message_history=st.session_state.messages.copy())
         
     display_chat_messages(convert_messages_to_dict(st.session_state.messages))
 
@@ -59,4 +68,5 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    movie_matcher = MovieMatcher()
+    asyncio.run(main(movie_matcher))

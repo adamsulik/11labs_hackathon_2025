@@ -64,7 +64,7 @@ class MovieMatcher:
         
         if all_similar_movies:
             return pd.concat(all_similar_movies, ignore_index=True)
-        return pd.DataFrame()
+        return pd.DataFrame(columns=['query_title', 'matched_title', 'movie_id', 'title', 'overview', 'release_date', 'vote_average', 'similarity_score'])
 
 
 if __name__ == "__main__":

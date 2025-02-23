@@ -38,6 +38,8 @@ def find_similar_titles(movies: List[str], metadata_df: pd.DataFrame, threshold:
         
         # Find matches above threshold
         matches = np.where(movie_similarities >= threshold)[0]
+        if len(matches) == 0:
+            return pd.DataFrame(columns=['query_title', 'best_matching_title', 'best_matching_id', 'score'])
         for match_idx in matches:
             matched_title = metadata_df.iloc[match_idx]['original_title']
             score = movie_similarities[match_idx]
