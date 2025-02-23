@@ -22,9 +22,11 @@ movie_matcher = MovieMatcher()
 def process_suggested_df(sugggested_df):
     movie_ids = sugggested_df['imdb_id'].tolist()
     titles_with_desc = sugggested_df[['title', 'overview']].to_markdown(index=False)
-    # return movie_ids, titles_with_desc
-    st.session_state.movie_ids = movie_ids
-    print('Tool called, movie ids:', movie_ids, ' Session movie_ids: ', st.session_state.movie_ids)
+    
+    # Update session state only if the movie IDs have changed
+    if 'movie_ids' not in st.session_state or st.session_state.movie_ids != movie_ids:
+        st.session_state.movie_ids = movie_ids
+    
     return titles_with_desc
 
 class SuggestMoviesSchema(BaseModel):
