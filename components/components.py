@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 
 
-async def animated_text(text: str, delay: float = 0.02, start_delay: float = 1.5):
+async def animated_text(text: str, delay: float = 0.02, start_delay: float = 1.5, container=st):
     """
     Displays text on the Streamlit app with a typewriter-like animation.
 
@@ -14,10 +14,11 @@ async def animated_text(text: str, delay: float = 0.02, start_delay: float = 1.5
     - text (str): The full text to display.
     - delay (float): Delay in seconds between displaying each letter.
     - start_delay (float): Animation start delay due to elevenlabs latency
+    - container: Streamlit container to render the animation in
     """
     # Create a placeholder that will be updated
-    with st.chat_message('assistant'):
-        placeholder = st.empty()
+    with container.chat_message('assistant'):
+        placeholder = container.empty()
         displayed_text = ""
         await asyncio.sleep(start_delay)
         
@@ -28,15 +29,15 @@ async def animated_text(text: str, delay: float = 0.02, start_delay: float = 1.5
             await asyncio.sleep(delay)
 
 
-async def display_chat_messages(messages):
+async def display_chat_messages(messages, container=st):
     for message in messages:
         if message.get("role") == "user":
-            with st.chat_message(message["role"]):
-                st.markdown(message.get("content"))
+            with container.chat_message(message["role"]):
+                container.markdown(message.get("content"))
 
         elif message.get("role") == "assistant":
-            with st.chat_message("assistant"):
-                st.markdown(message.get("content"))
+            with container.chat_message("assistant"):
+                container.markdown(message.get("content"))
 
 
 def get_link_preview(url):

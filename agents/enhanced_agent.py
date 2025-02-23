@@ -24,9 +24,8 @@ def process_suggested_df(sugggested_df):
     titles_with_desc = sugggested_df[['title', 'overview']].to_markdown(index=False)
     
     # Update session state only if the movie IDs have changed
-    if 'movie_ids' not in st.session_state or st.session_state.movie_ids != movie_ids:
-        st.session_state.movie_ids = movie_ids
-    
+    st.session_state.movie_ids = movie_ids
+    st.rerun()    
     return titles_with_desc
 
 class SuggestMoviesSchema(BaseModel):

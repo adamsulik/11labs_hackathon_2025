@@ -47,39 +47,52 @@ async def main(movie_matcher: MovieMatcher):
         # front_agent = SimpleAgent(message_history=st.session_state.messages.copy())
         front_agent = EnhancedAgent(message_history=st.session_state.messages.copy())
 
+    if "layout_ready" not in st.session_state:
+        st.session_state.layout_ready = False
+
+    # Create the layout containers early
+    if st.session_state.movie_ids:
+        col1, col2 = st.columns([6, 4])
+        chat_container = col1
+        movies_container = col2
+    else:
+        chat_container = st
+
+    async def handle_chat_interaction(question):
+        st.session_state.messages.append(HumanMessage(question))
+        with chat_container.chat_message("user"):
+            st.markdown(question)
+
+        # Get assistant response
+        assistant_response = front_agent.graph.invoke({'input_message': question})
+        response_content = assistant_response['messages'][-1].content
+        st.session_state.messages.append(AIMessage(response_content))
+
+        # Handle response animation
+        if speak:
+            await asyncio.gather(
+                speaker.speak_async(response_content),
+                animated_text(response_content, container=chat_container)
+            )
+        else:
+            await animated_text(response_content, start_delay=0, container=chat_container)
+
     async def display_chat():
-        await display_chat_messages(convert_messages_to_dict(st.session_state.messages))
+        await display_chat_messages(
+            convert_messages_to_dict(st.session_state.messages), 
+            container=chat_container
+        )
 
         if question := st.chat_input("Ask about some movie ..."):
-            # User question
-            st.session_state.messages.append(HumanMessage(question))
-            with st.chat_message("user"):
-                st.markdown(question)
+            await handle_chat_interaction(question)
 
-            # Asistant response
-            assistant_response = front_agent.graph.invoke({'input_message': question})
-            response_content = assistant_response['messages'][-1].content
-            st.session_state.messages.append(AIMessage(response_content))
-
-            if speak:
-                await asyncio.gather(
-                    speaker.speak_async(response_content),
-                    animated_text(response_content)
-                )
-            else:
-                await animated_text(response_content, start_delay=0)
+    # Display content
+    await display_chat()
     
-    if not len(st.session_state.movie_ids) > 0:
-        print('Nothing in session state: ', st.session_state.movie_ids)
-        await display_chat()
-    else:
-        print('Spliting columns')
-        col1, col2 = st.columns([6, 4])
-        with col1:
-            await display_chat()
-        with col2:
+    # Display movie cards if available
+    if st.session_state.movie_ids and 'movies_container' in locals():
+        with movies_container:
             await display_movie_cards()
-    # st.rerun()
 
 if __name__ == "__main__":
     movie_matcher = MovieMatcher()
