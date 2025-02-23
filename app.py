@@ -1,18 +1,51 @@
+import json
+from typing import Any
 import streamlit as st
 from openai import OpenAI
 from components.components import display_chat_messages, animated_text
 from dotenv import load_dotenv
 from eleven.speak import Speaker
 import asyncio
-from tools import movie_tools, process_suggested_df
 from network_embedding import MovieMatcher
 
 movie_matcher = MovieMatcher()
-suggest_movies = lambda query_titles: process_suggested_df(movie_matcher.find_movies(query_titles, threshold=0.9, n_similar=5))
 
-tool_dictionary = {
-    "suggest_movies": suggest_movies 
-}
+matcher = MovieMatcher()
+
+tools = [{
+    "name": "match_movies",
+    "type": "function",
+    "description": "Find similar movies based on given movie titles",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "movies": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "List of movie titles to find recommendations for",
+            }
+        },
+        "required": ["movies"],
+        "additionalProperties": False
+        },
+    }
+]
+    
+    # Example usage
+def match_movies(movies: list[str])->str:    
+    # First show matched titles
+    similar_movies_df = matcher.find_movies(movies)
+    return similar_movies_df.to_string(index=False)
+
+
+def call_tool(tool_name: str, args: dict[str, Any]) -> dict[str]:
+    args: dict[str, Any] = json.loads(args)
+    for tool in tools:
+        if tool["name"] == tool_name:
+            chosen_function = eval(tool_name)
+            print(f"Used Function: {chosen_function.__name__}, with {args} parameters")
+            return chosen_function(**args)
+    raise ValueError(f"Tool: '{tool_name}' not found in tool list")
 
 
 async def main():
@@ -71,24 +104,23 @@ async def main():
         assistant_response = client.chat.completions.create(
             messages=st.session_state.messages,
             model=model,
-            tools=movie_tools
+            functions=tools,
+            function_call="auto"
         )
-
-        if assistant_response.choices[0].message.tool_calls:
-            for tool_call in assistant_response.choices[0].message.tool_calls:
-                tool_name = tool_call['function']['name']
-                if tool_name == "suggest_movies":
-                    movie_ids, data = tool_dictionary[tool_name] # _ is a placeholder for movie_ids
-                    st.session_state.messages.append({"role": "assistant", "content": data})
-                    assistant_response = client.chat.completions.create(
-                        messages=st.session_state.messages,
-                        model=model
-                    )
-        else:
-            print('dupa')
-
-        response_content = assistant_response.choices[0].message.content
-        st.session_state.messages.append({"role": "assistant", "content": response_content})
+        
+        print("Response Message: \n",assistant_response.choices[0].message)
+        # Check if function call used
+        if assistant_response.choices[0].message.function_call:
+            function_call = assistant_response.choices[0].message.function_call
+            fucntion_name = function_call.name
+            function_args = function_call.arguments
+            similar_movies = call_tool(fucntion_name, function_args)
+            st.session_state.messages.append({"role": "assistant", "content": similar_movies})
+            
+        else: 
+            print("NO tools")
+            response_content = assistant_response.choices[0].message.content
+            st.session_state.messages.append({"role": "assistant", "content": response_content})
 
 
         if speak:
